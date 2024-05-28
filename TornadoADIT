@@ -1,0 +1,155 @@
+local UserInputService = game:GetService("UserInputService")
+local Mouse = game:GetService("Players").LocalPlayer:GetMouse()
+local Workspace = game:GetService("Workspace")
+
+local tornadoEnabled = false
+local tornadoRadius = 50 -- Radius tornado default
+
+-- Fungsi untuk membuat efek tornado di sekitar bagian-bagian tertentu
+local function createTornado(center, radius)
+    local tornadoPart = Instance.new("Part")
+    tornadoPart.Name = "TornadoPart"
+    tornadoPart.Size = Vector3.new(radius * 2, 2, radius * 2)
+    tornadoPart.Position = center
+    tornadoPart.Anchored = true
+    tornadoPart.CanCollide = false
+    tornadoPart.Transparency = 1
+    tornadoPart.Parent = Workspace
+
+    local Attachment1 = Instance.new("Attachment", tornadoPart)
+    local Updated = Mouse.Hit + Vector3.new(0, 5, 0)
+
+    local function ForcePart(v)
+        if v:IsA("Part") and v.Anchored == false and v.Parent:FindFirstChild("Humanoid") == nil and v.Parent:FindFirstChild("Head") == nil and v.Name ~= "Handle" then
+            Mouse.TargetFilter = v
+            for _, x in next, v:GetChildren() do
+                if x:IsA("BodyAngularVelocity") or x:IsA("BodyForce") or x:IsA("BodyGyro") or x:IsA("BodyPosition") or x:IsA("BodyThrust") or x:IsA("BodyVelocity") or x:IsA("RocketPropulsion") then
+                    x:Destroy()
+                end
+            end
+            if v:FindFirstChild("Attachment") then
+                v:FindFirstChild("Attachment"):Destroy()
+            end
+            if v:FindFirstChild("AlignPosition") then
+                v:FindFirstChild("AlignPosition"):Destroy()
+            end
+            if v:FindFirstChild("Torque") then
+                v:FindFirstChild("Torque"):Destroy()
+            end
+            v.CanCollide = false
+            local Torque = Instance.new("Torque", v)
+            Torque.Torque = Vector3.new(100000, 100000, 100000)
+            local AlignPosition = Instance.new("AlignPosition", v)
+            local Attachment2 = Instance.new("Attachment", v)
+            Torque.Attachment0 = Attachment2
+            AlignPosition.MaxForce = 9999999999999999
+            AlignPosition.MaxVelocity = math.huge
+            AlignPosition.Responsiveness = 200
+            AlignPosition.Attachment0 = Attachment2 
+            AlignPosition.Attachment1 = Attachment1
+        end
+    end
+
+    for _, v in next, Workspace:GetDescendants() do
+        ForcePart(v)
+    end
+    Workspace.DescendantAdded:Connect(function(v)
+        ForcePart(v)
+    end)
+
+    UserInputService.InputBegan:Connect(function(Key, Chat)
+        if Key.KeyCode == Enum.KeyCode.E and not Chat then
+            Updated = Mouse.Hit + Vector3.new(0, 5, 0)
+        end
+    end)
+
+    spawn(function()
+        while tornadoEnabled and game:GetService("RunService").RenderStepped:Wait() do
+            Attachment1.WorldCFrame = Updated
+        end
+    end)
+end
+
+-- Fungsi untuk mengubah status efek tornado
+local function toggleTornado()
+    tornadoEnabled = not tornadoEnabled
+    if tornadoEnabled then
+        createTornado(Vector3.new(0, 30, 0), tornadoRadius)
+    else
+        for _, v in ipairs(Workspace:GetChildren()) do
+            if v.Name == "TornadoPart" then
+                v:Destroy()
+            end
+        end
+    end
+end
+
+-- Fungsi untuk menangani input dari tombol on/off
+local function handleInput(input)
+    if input.KeyCode == Enum.KeyCode.T then
+        toggleTornado()
+    end
+end
+
+UserInputService.InputBegan:Connect(handleInput)
+
+-- Buat tombol on/off di GUI
+local gui = Instance.new("ScreenGui")
+gui.IgnoreGuiInset = true -- Mengabaikan area GUI yang aman pada perangkat mobile
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 50)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Warna merah
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local button = Instance.new("TextButton")
+button.Text = "Tornado BY adit : OFF"
+button.Size = UDim2.new(1, 0, 1, 0)
+button.BackgroundTransparency = 1
+button.Parent = frame
+
+-- Fungsi untuk menangani klik tombol on/off
+button.MouseButton1Click:Connect(function()
+    toggleTornado()
+    button.Text = tornadoEnabled and "Tornado: ON" or "Tornado: OFF"
+end)
+
+-- Slider untuk mengatur radius tornado
+local sliderFrame = Instance.new("Frame")
+sliderFrame.Size = UDim2.new(0, 200, 0, 20)
+sliderFrame.Position = UDim2.new(0, 10, 0, 70)
+sliderFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 255) -- Warna pink
+sliderFrame.BorderSizePixel = 0
+sliderFrame.Parent = gui
+
+local sliderTextLabel = Instance.new("TextLabel")
+sliderTextLabel.Text = "Tornado Radius: " .. tornadoRadius
+sliderTextLabel.Size = UDim2.new(1, 0, 1, 0)
+sliderTextLabel.BackgroundTransparency = 1
+sliderTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+sliderTextLabel.Parent = sliderFrame
+
+-- Fungsi untuk menangani perubahan nilai slider
+local function updateTornadoRadius(value)
+    tornadoRadius = value
+    sliderTextLabel.Text = "Tornado Radius: " .. tornadoRadius
+end
+
+local slider = Instance.new("TextButton")
+slider.Text = "Change Radius"
+slider.Size = UDim2.new(0, 200, 0, 20)
+slider.Position = UDim2.new(0, 10, 0, 100)
+slider.BackgroundColor3 = Color3.fromRGB(0, 255, 255) -- Warna cyan
+slider.BorderSizePixel = 0
+slider.Parent = gui
+
+-- Fungsi untuk menangani klik slider
+slider.MouseButton1Click:Connect(function()
+    -- Ganti radius tornado saat slider diklik
+    local newValue = 400 -- Nilai baru untuk radius tornado (dapat diubah sesuai keinginan)
+    updateTornadoRadius(newValue)
+end)
+
+gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
